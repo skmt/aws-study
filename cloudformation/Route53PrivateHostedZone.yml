@@ -1,0 +1,28 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for example.jp Route53 Private Hosted Zone (Route53PrivateHostedZone)
+Parameters:
+  DomainName:
+    Type: String
+    Default: example.jp
+    Description: 'Naming convention: [Domain Name]'
+Resources:
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      HostedZoneConfig:
+        Comment: !Ref DomainName
+      Name: !Ref DomainName
+      VPCs:
+      - VPCId: !ImportValue BaseNetwork-VPC
+        VPCRegion:
+          Ref: AWS::Region
+Outputs:
+  HostedZoneId:
+    Value: !Ref PrivateHostedZone
+    Export:
+      Name: !Sub "${AWS::StackName}-HostedZoneId"
+  DomainName:
+    Value: !Ref DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-DomainName"

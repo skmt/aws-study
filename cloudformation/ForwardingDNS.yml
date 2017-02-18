@@ -1,0 +1,291 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for Forwarding DNS EC2 (ForwardingDNS)
+Parameters:
+  HostnameForwardingDNS1:
+    Type: String
+    Default: fdns1
+    Description: 'Naming convention: [Host Name]'
+  HostnameForwardingDNS2:
+    Type: String
+    Default: fdns2
+    Description: 'Naming convention: [Host Name]'
+Resources:
+  CloudWatchClientRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service:
+            - "ec2.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+      - PolicyName: "CloudWatchClientPolicy"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: "Allow"
+            Action:
+            - "cloudwatch:PutMetricData"
+            Resource: "*"
+  CloudWatchClientProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: 
+      - !Ref CloudWatchClientRole
+  SecurityGroupForDNS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound DNS
+      VpcId: !ImportValue BaseNetwork-VPC
+      SecurityGroupIngress:
+      - IpProtocol: udp
+        FromPort: 53
+        ToPort: 53
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: udp
+        FromPort: 53
+        ToPort: 53
+        CidrIp: 192.168.0.0/16
+      - IpProtocol: tcp
+        FromPort: 53
+        ToPort: 53
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 53
+        ToPort: 53
+        CidrIp: 192.168.0.0/16
+  ForwardingDNS1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-56d4ad31
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref CloudWatchClientProfile
+      KeyName: shared-key
+      Monitoring: true
+      NetworkInterfaces:
+      - GroupSet:
+        - !ImportValue BaseNetwork-SecurityGroupForRemoteSSH-GroupId
+        - !Ref SecurityGroupForDNS
+        DeviceIndex: 0
+        DeleteOnTermination: true
+        PrivateIpAddress: 172.20.2.101
+        SubnetId: !ImportValue BaseNetwork-SubnetPrdPrivate1
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 32
+      Tags:
+      - Key: Name
+        Value: !Ref HostnameForwardingDNS1
+      - Key: Backup-Type
+        Value: Online
+      - Key: Backup-Generation
+        Value: 3
+  ForwardingDNS2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-56d4ad31
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref CloudWatchClientProfile
+      KeyName: shared-key
+      Monitoring: true
+      NetworkInterfaces:
+      - GroupSet:
+        - !ImportValue BaseNetwork-SecurityGroupForRemoteSSH-GroupId
+        - !Ref SecurityGroupForDNS
+        DeviceIndex: 0
+        DeleteOnTermination: true
+        PrivateIpAddress: 172.20.3.101
+        SubnetId: !ImportValue BaseNetwork-SubnetPrdPrivate2
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 32
+      Tags:
+      - Key: Name
+        Value: !Ref HostnameForwardingDNS2
+      - Key: Backup-Type
+        Value: Online
+      - Key: Backup-Generation
+        Value: 3
+  AddRecordsToRoute53:
+    Type: AWS::Route53::RecordSetGroup
+    DependsOn: 
+    - ForwardingDNS1
+    - ForwardingDNS2
+    Properties:
+      HostedZoneId: !ImportValue Route53PrivateHostedZone-HostedZoneId
+      RecordSets:
+      - Name: 
+          Fn::Join:
+          - ''
+          - - !Ref HostnameForwardingDNS1
+            - '.'
+            - !ImportValue Route53PrivateHostedZone-DomainName
+            - '.'
+        Type: A
+        TTL: 300
+        ResourceRecords: 
+        - !GetAtt ForwardingDNS1.PrivateIp
+      - Name:
+          Fn::Join:
+          - ''
+          - - !Ref HostnameForwardingDNS2
+            - '.'
+            - !ImportValue Route53PrivateHostedZone-DomainName
+            - '.'
+        Type: A
+        TTL: 300
+        ResourceRecords:
+        - !GetAtt ForwardingDNS2.PrivateIp
+  SNSTopicForwarder:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint: t.tanai@amana.jp
+        Protocol: email
+  StatusCheckAlarmForwardingDNS1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Status Alarm For ForwardingDNS1
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: StatusCheckFailed
+      Namespace: AWS/EC2
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS1
+  CPUUtilizationAlarmForwardingDNS1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: CPU Alarm For ForwardingDNS1
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS1
+  MemoryUtilizationAlarmForwardingDNS1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Memory Alarm For ForwardingDNS1
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: MemoryUtilization
+      Namespace: System/Linux
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS1
+  DiskUtilizationAlarmForwardingDNS1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Disk Alarm For ForwardingDNS1
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: DiskSpaceUtilization
+      Namespace: System/Linux
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS1
+      - Name: Filesystem
+        Value: "/dev/xvda1"
+      - Name: MountPath
+        Value: "/"
+  StatusCheckAlarmForwardingDNS2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Status Alarm For ForwardingDNS2
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: StatusCheckFailed
+      Namespace: AWS/EC2
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS2
+  CPUUtilizationAlarmForwardingDNS2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: CPU Alarm For ForwardingDNS2
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS2
+  MemoryUtilizationAlarmForwardingDNS2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Memory Alarm For ForwardingDNS2
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: MemoryUtilization
+      Namespace: System/Linux
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS2
+  DiskUtilizationAlarmForwardingDNS2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Disk Alarm For ForwardingDNS2
+      AlarmActions:
+      - !Ref SNSTopicForwarder
+      MetricName: DiskSpaceUtilization
+      Namespace: System/Linux
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref ForwardingDNS2
+      - Name: Filesystem
+        Value: "/dev/xvda1"
+      - Name: MountPath
+        Value: "/"

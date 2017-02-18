@@ -1,0 +1,518 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for VPC/Subnet (BaseNetwork)
+Mappings:
+  SubnetConfig:
+    VPC:
+      CIDR: 172.20.0.0/21
+    SubnetPrdPublic1:
+      CIDR: 172.20.0.0/24
+    SubnetPrdPublic2:
+      CIDR: 172.20.1.0/24
+    SubnetPrdPrivate1:
+      CIDR: 172.20.2.0/24
+    SubnetPrdPrivate2:
+      CIDR: 172.20.3.0/24
+    SubnetStgPublic1:
+      CIDR: 172.20.4.0/25
+    SubnetStgPublic2:
+      CIDR: 172.20.4.128/25
+    SubnetStgPrivate1:
+      CIDR: 172.20.5.0/25
+    SubnetStgPrivate2:
+      CIDR: 172.20.5.128/25
+    SubnetDevPublic1:
+      CIDR: 172.20.6.0/25
+    SubnetDevPublic2:
+      CIDR: 172.20.6.128/25
+    SubnetDevPrivate1:
+      CIDR: 172.20.7.0/25
+    SubnetDevPrivate2:
+      CIDR: 172.20.7.128/25
+    SubnetCustomerPrivate1:
+      CIDR: 10.0.0.0/8
+    SubnetCustomerPrivate2:
+      CIDR: 192.168.0.0/16
+  IPs:
+    Customer:
+      IP: 210.250.140.41/32
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [SubnetConfig, VPC, CIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+  SubnetPrdPublic1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetPrdPublic1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraPrdPublic1
+  SubnetPrdPublic2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetPrdPublic2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraPrdPublic2
+  SubnetPrdPrivate1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetPrdPrivate1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraPrdPrivate1
+  SubnetPrdPrivate2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetPrdPrivate2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraPrdPrivate2
+  SubnetStgPublic1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetStgPublic1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraStgPublic1
+  SubnetStgPublic2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetStgPublic2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraStgPublic2
+  SubnetStgPrivate1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetStgPrivate1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraStgPrivate1
+  SubnetStgPrivate2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetStgPrivate2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraStgPrivate2
+  SubnetDevPublic1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetDevPublic1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraDevPublic1
+  SubnetDevPublic2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetDevPublic2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraDevPublic2
+  SubnetDevPrivate1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetDevPrivate1, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraDevPrivate1
+  SubnetDevPrivate2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !FindInMap [SubnetConfig, SubnetDevPrivate2, CIDR]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SubnetInfraDevPrivate2
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  RouteTablePrivate:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  RouteTablePublicAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPrdPublic1
+  RouteTablePublicAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPrdPublic2
+  RouteTablePublicAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetStgPublic1
+  RouteTablePublicAssociation4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetStgPublic2
+  RouteTablePublicAssociation5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetDevPublic1
+  RouteTablePublicAssociation6:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetDevPublic2
+  RouteTablePrivateAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetPrdPrivate1
+  RouteTablePrivateAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetPrdPrivate2
+  RouteTablePrivateAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetStgPrivate1
+  RouteTablePrivateAssociation4:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetStgPrivate2
+  RouteTablePrivateAssociation5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetDevPrivate1
+  RouteTablePrivateAssociation6:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetDevPrivate2
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment1:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  RoutePublicDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  RoutePublicCustomerForPrivateRouteTable:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      DestinationCidrBlock: !FindInMap [IPs, Customer, IP]
+      GatewayId: !Ref InternetGateway
+  RoutePublicForOfficeRouteTable1:
+    DependsOn: AttachVirtualGatewayToCustomer
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      GatewayId: !Ref VirtualGatewayToCustomer
+  RoutePublicForOfficeRouteTable2:
+    DependsOn: AttachVirtualGatewayToCustomer
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      GatewayId: !Ref VirtualGatewayToCustomer
+  RoutePrivateForOfficeRouteTable1:
+    DependsOn: AttachVirtualGatewayToCustomer
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      DestinationCidrBlock: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      GatewayId: !Ref VirtualGatewayToCustomer
+  RoutePrivateForOfficeRouteTable2:
+    DependsOn: AttachVirtualGatewayToCustomer
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      DestinationCidrBlock: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      GatewayId: !Ref VirtualGatewayToCustomer
+  SecurityGroupForRemoteSSH:
+    DependsOn: VPC
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RemoteSSH Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !FindInMap [IPs, Customer, IP]
+  SecurityGroupForRemoteDesktop:
+    DependsOn: VPC
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Remote Desktop Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      - IpProtocol: tcp
+        FromPort: 3389
+        ToPort: 3389
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate1, CIDR]
+      - IpProtocol: tcp
+        FromPort: 3389
+        ToPort: 3389
+        CidrIp: !FindInMap [SubnetConfig, SubnetCustomerPrivate2, CIDR]
+      - IpProtocol: tcp
+        FromPort: 3389
+        ToPort: 3389
+        CidrIp: !FindInMap [IPs, Customer, IP]
+  SecurityGroupForLocalConnect:
+    DependsOn: VPC
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Local Connection
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: !FindInMap [SubnetConfig, VPC, CIDR]
+      - IpProtocol: udp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: !FindInMap [SubnetConfig, VPC, CIDR]
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !FindInMap [SubnetConfig, VPC, CIDR]
+  VirtualGatewayToCustomer:
+    DependsOn: VPC
+    Type: AWS::EC2::VPNGateway
+    Properties:
+      Type: ipsec.1
+  AttachVirtualGatewayToCustomer:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      VpnGatewayId: !Ref VirtualGatewayToCustomer
+  NATGatewayToInternet:
+    DependsOn: 
+    - VPC
+    - ElasticIPforNATGateway
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - ElasticIPforNATGateway
+        - AllocationId
+      SubnetId: !Ref SubnetPrdPublic1
+  ElasticIPforNATGateway:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  RoutePulicForNATGateway:
+    DependsOn: AttachVirtualGatewayToCustomer
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayToInternet
+Outputs:
+  VPC:
+    Description: VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPC"
+  SubnetPrdPublic1:
+    Description: Subnet
+    Value: !Ref SubnetPrdPublic1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetPrdPublic1"
+  SubnetPrdPublic2:
+    Description: Subnet
+    Value: !Ref SubnetPrdPublic2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetPrdPublic2"
+  SubnetPrdPrivate1:
+    Description: Subnet
+    Value: !Ref SubnetPrdPrivate1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetPrdPrivate1"
+  SubnetPrdPrivate2:
+    Description: Subnet
+    Value: !Ref SubnetPrdPrivate2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetPrdPrivate2"
+  SubnetStgPublic1:
+    Description: Subnet
+    Value: !Ref SubnetStgPublic1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetStgPublic1"
+  SubnetStgPublic2:
+    Description: Subnet
+    Value: !Ref SubnetStgPublic2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetStgPublic2"
+  SubnetStgPrivate1:
+    Description: Subnet
+    Value: !Ref SubnetStgPrivate1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetStgPrivate1"
+  SubnetStgPrivate2:
+    Description: Subnet
+    Value: !Ref SubnetStgPrivate2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetStgPrivate2"
+  SubnetDevPublic1:
+    Description: Subnet
+    Value: !Ref SubnetDevPublic1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetDevPublic1"
+  SubnetDevPublic2:
+    Description: Subnet
+    Value: !Ref SubnetDevPublic2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetDevPublic2"
+  SubnetDevPrivate1:
+    Description: Subnet
+    Value: !Ref SubnetDevPrivate1
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetDevPrivate1"
+  SubnetDevPrivate2:
+    Description: Subnet
+    Value: !Ref SubnetDevPrivate2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetDevPrivate2"
+  SecurityGroupForRemoteSSH:
+    Description: SecurityGroup for Remote SSH
+    Value: !Ref SecurityGroupForRemoteSSH
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForRemoteSSH"
+  SecurityGroupForRemoteSSHGroupId:
+    Description: SecurityGroupId for Remote SSH
+    Value: !GetAtt SecurityGroupForRemoteSSH.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForRemoteSSH-GroupId"
+  SecurityGroupForRemoteDesktop:
+    Description: SecurityGroup for Remote Desktop
+    Value: !Ref SecurityGroupForRemoteDesktop
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForRemoteDesktop"
+  SecurityGroupForRemoteDesktopGroupId:
+    Description: SecurityGroupId for Remote Desktop
+    Value: !GetAtt SecurityGroupForRemoteDesktop.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForRemoteDesktop-GroupId"
+  SecurityGroupForLocalConnect:
+    Description: SecurityGroup for Local Connection
+    Value: !Ref SecurityGroupForLocalConnect
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForLocalConnect"
+  SecurityGroupForLocalConnectGroupId:
+    Description: SecurityGroupId for Local Connection
+    Value: !GetAtt SecurityGroupForLocalConnect.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupForLocalConnect-GroupId"

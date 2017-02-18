@@ -1,0 +1,2 @@
+# Run System Basic Monitoring
+*/5 * * * * root /usr/local/bin/mon-put-instance-data.pl --from-cron --mem-util --mem-used --mem-avail --swap-util --swap-used --disk-space-util --disk-path=/
