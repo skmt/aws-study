@@ -28,4 +28,4 @@ All the list below has to be deployed by munual operation after making the above
 
 # Network Configuration Diagram
 
-<img src="https://github.com/skmt/aws-study/blob/images/images/StackBaseNetwork.svg" width="735" height="490" />
+<img src="https://github.com/skmt/aws-study/blob/images/images/StackBaseNetwork.png" width="750" height="422" />
