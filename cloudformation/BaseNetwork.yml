@@ -486,6 +486,16 @@ Outputs:
     Value: !Ref SubnetDevPrivate2
     Export:
       Name: !Sub "${AWS::StackName}-SubnetDevPrivate2"
+  RouteTablePublic:
+    Description: Route Table for Public
+    Value: !Ref RouteTablePublic
+    Export:
+      Name: !Sub "${AWS::StackName}-RouteTablePublic"
+  RouteTablePrivate:
+    Description: Route Table for Private
+    Value: !Ref RouteTablePrivate
+    Export:
+      Name: !Sub "${AWS::StackName}-RouteTablePrivate"
   SecurityGroupForRemoteSSH:
     Description: SecurityGroup for Remote SSH
     Value: !Ref SecurityGroupForRemoteSSH

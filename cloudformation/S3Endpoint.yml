@@ -1,0 +1,99 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for S3 Bucket And Endpoint (S3Endpoint)
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: example-201702231554-bucket
+    Description: S3 Bucket for Private
+Resources:
+  S3BucketUser:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+      - PolicyName: AllowS3ObjectManagement
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - "*"
+            Resource:
+              Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: S3BucketName
+                - "*"
+      UserName: example-bucket-admin
+  S3BucketUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref S3BucketUser
+  S3BucketPolicy:
+    DependsOn:
+    - S3Bucket
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              Fn::GetAtt:
+              - S3BucketUser
+              - Arn
+          Action:
+          - "*"
+          Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: S3BucketName
+              - "/*"
+  S3Bucket:
+    DependsOn:
+    - S3BucketUser
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+      BucketName: !Ref S3BucketName
+  S3Endpoint:
+    DependsOn:
+    - S3Bucket
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: "*"
+          Action:
+          - "*"
+          Resource:
+          - "*"
+      RouteTableIds:
+      - !ImportValue BaseNetwork-RouteTablePublic
+      - !ImportValue BaseNetwork-RouteTablePrivate
+      ServiceName:
+        Fn::Join:
+        - ''
+        - - com.amazonaws.
+          - Ref: AWS::Region
+          - ".s3"
+      VpcId: !ImportValue BaseNetwork-VPC
+Outputs:
+  BucketName:
+    Description: S3Bucket for Private
+    Value: !Ref S3Bucket
+    Export:
+      Name: !Sub "${AWS::StackName}-S3BucketName"
+  IAMAccessKey:
+    Description: Access Key For S3 Bucket
+    Value: !Ref S3BucketUserAccessKey
+    Export:
+      Name: !Sub "${AWS::StackName}-IAMAccessKey"
+  IAMSecretAccessKey:
+    Description: Secret Access Key For S3 Bucket
+    Value: !GetAtt S3BucketUserAccessKey.SecretAccessKey
+    Export:
+      Name: !Sub "${AWS::StackName}-IAMSecretAccessKey"

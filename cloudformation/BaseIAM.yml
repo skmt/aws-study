@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for IAM User (IAMAdminUser)
+Resources:
+  AdminUser:
+    Type: "AWS::IAM::User"
+    Properties: 
+      LoginProfile:
+        Password: root
+        PasswordResetRequired: True
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+        - arn:aws:iam::aws:policy/IAMUserChangePassword
+      Path: /
+      UserName: admin-user
+  AdminUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref AdminUser
+Outputs:
+  AdminUserAccessKey:
+    Value: !Ref AdminUserAccessKey
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminUserAccessKey"
+  AdminUserSecretAccessKey:
+    Value: !GetAtt AdminUserAccessKey.SecretAccessKey
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminUserSecretAccessKey"

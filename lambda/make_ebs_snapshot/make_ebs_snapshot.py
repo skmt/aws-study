@@ -11,71 +11,89 @@ def lambda_handler(event, context):
 
 
 def start_thread():
-    instances = get_instances(['Backup-Generation'])
+    instances = get_instances(['Backup-Type'])
+    threads = []
 
     for i in instances:
+        id = i['InstanceId']
+        tags = {t['Key']: t['Value'] for t in i['Tags']}
         thname = 'th_' + tags.get('Name', 'None')
+        hostname = tags.get('Name', 'None')
         bktype = tags.get('Backup-Type', 'None')
         bkgeneration = int(tags.get('Backup-Generation', 0))
 
-        if bktype != 'Online' and bktype != 'Offline':
+        if bktype != 'Generic' and bktype != 'Online' and bktype != 'Offline' and bktype != 'OfflineAfterShutdown':
             continue
 
         if bkgeneration < 1:
             continue
 
-        thread = threading.Thread(target=rotate_snapshots, name=thname, args=(i))
+        thread = threading.Thread(target=rotate_snapshots, name=thname, args=(i, hostname, bktype, bkgeneration))
+        threads.append(thread)
         thread.start()
 
+    for t in threads:
+        t.join()
 
-def rotate_snapshots(instance):
+
+def rotate_snapshots(_instance, _hostname, _type, _generation):
     descriptions = {}
 
-    tags = {t['Key']: t['Value'] for t in instance['Tags']}
-    hostname = tags.get('Name', 'None')
-    bktype = tags.get('Backup-Type', 'None')
-    bkgeneration = int(tags.get('Backup-Generation', 0))
-    shutdown_status = False
+    instance = _instance
+    hostname = _hostname
+    bktype = _type
+    bkgeneration = _generation
+    initial_status = _instance['State']['Name']
 
-    if bktype == 'Offline':
-        shutdown_status = shutdown_instance(instance)
-        if shutdown_status is False:
-            print 'Can not stop instance (%s)' % hostname
-            return
-        print 'Stopped instance %s(%s)' % (hostname, instance.id)
+    if bktype == 'Online' and initial_status != 'running':
+        print 'Skipping Online-Snapshot Due To Mismatch Status (%s)<%s>' % (hostname, initial_status)
+        return
+
+    if bktype == 'Offline' and initial_status != 'stopped':
+        print 'Skipping Offline-Snapshot Due To Mismatch Status (%s)<%s>' % (hostname, initial_status)
+        return
+
+    if bktype == 'OfflineAfterShutdown':
+        if initial_status == 'running':
+            if shutdown_instance(instance) is False:
+                print 'Cannot Stop Instance, Exit Immediately (%s)' % hostname
+                return
 
     for b in instance['BlockDeviceMappings']:
         if b.get('Ebs') is None:
-            print 'No snapshot volume (%s)' % hostname
+            print 'No Snapshot Volume (%s)' % hostname
             return
 
         volume_id = b['Ebs']['VolumeId']
-        description = 'Automatically Snapshotted by Lambda EBS_Snapshot Script ' + volume_id + '(' + hostname + ')'
+        description = 'Automatically Snapshotted ' + volume_id + '(' + hostname + ')'
 
         snapshot = _create_snapshot(volume_id, description)
-        print 'Create snapshot %s(%s)' % (snapshot['SnapshotId'], description)
+        print 'Created Snapshot %s(%s)' % (snapshot['SnapshotId'], description)
 
         descriptions[description] = bkgeneration
 
-    if bktype == 'Offline' and shutdown_status is True:
+    if bktype == 'OfflineAfterShutdown' and initial_status == 'running':
         state = startup_instance(instance)
-        print 'Starting instance %s(%s)[%s]' % (hostname, instance.id, state['Name'])
 
     delete_old_snapshots(descriptions)
 
 
 def startup_instance(instance):
-    state = instance.start()
-    return state
+    i = boto3.resource('ec2').Instance(instance['InstanceId'])
+    i.start()
+    i.wait_until_running()
+    return True
 
 
 def shutdown_instance(instance):
-    if instance.state['Name'] != 'stopped':
-        instance.stop()
-        for retry in range(1, 6):
-            if instance.state['Name'] == 'stopped':
-                return True
-            time.sleep 10
+    state = instance['State']
+    i = boto3.resource('ec2').Instance(instance['InstanceId'])
+    if state['Name'] == 'running':
+        i.stop()
+        i.wait_until_stopped()
+        return True
+    elif state['Name'] == 'stopped':
+        return True
     return False
 
 
@@ -110,7 +128,6 @@ def delete_old_snapshots(descriptions):
 
         for s in old_snapshots:
             _delete_snapshot(s['SnapshotId'])
-            print 'delete snapshot %s(%s)' % (s['SnapshotId'], s['Description'])
 
 
 def get_snapshots_descriptions(descriptions):
@@ -136,7 +153,7 @@ def _create_snapshot(id, description):
         except ClientError as e:
             print str(e)
         time.sleep(1)
-    raise Exception('cannot create snapshot ' + description)
+    raise Exception('Cannot Create Snapshot ' + description)
 
 
 def _delete_snapshot(id):
@@ -146,4 +163,4 @@ def _delete_snapshot(id):
         except ClientError as e:
             print str(e)
         time.sleep(1)
-    raise Exception('cannot delete snapshot ' + id)
+    raise Exception('Cannot Delete Snapshot ' + id)

@@ -47,11 +47,13 @@ Python script can handle only EC2's volumes which includes the following tags.
 
 - Backup-Type
 
-| Type                    | Action         |
-|:------------------------|:---------------|
-| Online                  | Online Backup  |
-| Offline                 | Offline Backup |
-| Other than listed above | Not Backup     |
+| Type                    | Action                        |
+|:------------------------|:------------------------------|
+| Generic                 | Online/Offline Backup         |
+| Online                  | Online Backup                 |
+| Offline                 | Offline Backup                |
+| OfflineAfterShutdown    | Offline Backup After Shutdown |
+| Other than listed above | Skip Backup                   |
 
 
 ## Setting Execution Schedule

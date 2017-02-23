@@ -1,0 +1,259 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud Formation for EC2 and ALB (EC2andALB)
+Parameters:
+  EC2KeyPair:
+    Type: String
+    Default: shared-key
+    Description: 'Key name convention: [key pair]'
+  HostnameWebApp1:
+    Type: String
+    Default: webapp1
+    Description: 'Naming convention: [Host Name]'
+  HostnameWebApp2:
+    Type: String
+    Default: webapp2
+    Description: 'Naming convention: [Host Name]'
+  HostnameRevProxy1:
+    Type: String
+    Default: revproxy1
+    Description: 'Naming convention: [Host Name]'
+Resources:
+  SecurityGroupForPrivateWebService:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound HTTP for Private Subnets
+      VpcId: !ImportValue BaseNetwork-VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 192.168.0.0/16
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 192.168.0.0/16
+  SecurityGroupForPublicWebService:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Inbound HTTP for Public Subnets
+      VpcId: !ImportValue BaseNetwork-VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 0.0.0.0/0
+  WebApp1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-56d4ad31
+      InstanceType: t2.micro
+      KeyName: !Ref EC2KeyPair
+      NetworkInterfaces:
+      - GroupSet:
+        - !ImportValue BaseNetwork-SecurityGroupForRemoteSSH-GroupId
+        - !ImportValue BaseNetwork-SecurityGroupForLocalConnect-GroupId
+        - !Ref SecurityGroupForPrivateWebService
+        DeviceIndex: 0
+        DeleteOnTermination: true
+        SubnetId: !ImportValue BaseNetwork-SubnetPrdPrivate1
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvda
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 32
+      Tags:
+      - Key: Name
+        Value: !Ref HostnameWebApp1
+      - Key: Backup-Type
+        Value: Online
+      - Key: Backup-Generation
+        Value: 3
+  WebApp2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-56d4ad31
+      InstanceType: t2.micro
+      KeyName: !Ref EC2KeyPair
+      NetworkInterfaces:
+      - GroupSet:
+        - !ImportValue BaseNetwork-SecurityGroupForRemoteSSH-GroupId
+        - !ImportValue BaseNetwork-SecurityGroupForLocalConnect-GroupId
+        - !Ref SecurityGroupForPrivateWebService
+        DeviceIndex: 0
+        DeleteOnTermination: true
+        SubnetId: !ImportValue BaseNetwork-SubnetPrdPrivate2
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvda
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 32
+      Tags:
+      - Key: Name
+        Value: !Ref HostnameWebApp2
+      - Key: Backup-Type
+        Value: Online
+      - Key: Backup-Generation
+        Value: 3
+  ReverseProxyEIP:
+    DependsOn:
+    - RevProxy1
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref RevProxy1
+  RevProxy1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-56d4ad31
+      InstanceType: t2.micro
+      KeyName: !Ref EC2KeyPair
+      NetworkInterfaces:
+      - GroupSet:
+        - !ImportValue BaseNetwork-SecurityGroupForRemoteSSH-GroupId
+        - !ImportValue BaseNetwork-SecurityGroupForLocalConnect-GroupId
+        - !Ref SecurityGroupForPublicWebService
+        DeviceIndex: 0
+        DeleteOnTermination: true
+        SubnetId: !ImportValue BaseNetwork-SubnetPrdPublic1
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvda
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 32
+      Tags:
+      - Key: Name
+        Value: !Ref HostnameRevProxy1
+      - Key: Backup-Type
+        Value: Online
+      - Key: Backup-Generation
+        Value: 3
+  AddRecordsToRoute53:
+    Type: AWS::Route53::RecordSetGroup
+    DependsOn: 
+    - WebApp1
+    - WebApp2
+    - RevProxy1
+    Properties:
+      HostedZoneId: !ImportValue Route53PrivateHostedZone-HostedZoneId
+      RecordSets:
+      - Name: 
+          Fn::Join:
+          - ''
+          - - !Ref HostnameWebApp1
+            - '.'
+            - !ImportValue Route53PrivateHostedZone-DomainName
+            - '.'
+        Type: A
+        TTL: 300
+        ResourceRecords: 
+        - !GetAtt WebApp1.PrivateIp
+      - Name:
+          Fn::Join:
+          - ''
+          - - !Ref HostnameWebApp2
+            - '.'
+            - !ImportValue Route53PrivateHostedZone-DomainName
+            - '.'
+        Type: A
+        TTL: 300
+        ResourceRecords:
+        - !GetAtt WebApp2.PrivateIp
+      - Name:
+          Fn::Join:
+          - ''
+          - - !Ref HostnameRevProxy1
+            - '.'
+            - !ImportValue Route53PrivateHostedZone-DomainName
+            - '.'
+        Type: A
+        TTL: 300
+        ResourceRecords:
+        - !GetAtt RevProxy1.PrivateIp
+  ALBTargetForInternal:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /etc/system_watcher.php
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200
+      Name: WebAppGroup
+      Port: 80
+      Protocol: HTTP
+      Targets:
+      - Id: !Ref WebApp1
+        Port: 80
+      - Id: !Ref WebApp2
+        Port: 80
+      UnhealthyThresholdCount: 2
+      VpcId: !ImportValue BaseNetwork-VPC
+  ALBForInternal:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+      - !ImportValue BaseNetwork-SubnetPrdPrivate1
+      - !ImportValue BaseNetwork-SubnetPrdPrivate2
+      SecurityGroups:
+      - !Ref SecurityGroupForPrivateWebService
+  ALBListenerForInternal:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - TargetGroupArn: !Ref ALBTargetForInternal
+        Type: forward
+      LoadBalancerArn: !Ref ALBForInternal
+      Port: 80
+      Protocol: HTTP
+  ALBTargetForPublic:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200
+      Name: RevProxyGroup
+      Port: 80
+      Protocol: HTTP
+      Targets:
+      - Id: !Ref RevProxy1
+        Port: 80
+      UnhealthyThresholdCount: 2
+      VpcId: !ImportValue BaseNetwork-VPC
+  ALBForPublic:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+      - !ImportValue BaseNetwork-SubnetPrdPublic1
+      - !ImportValue BaseNetwork-SubnetPrdPublic2
+      SecurityGroups:
+      - !Ref SecurityGroupForPublicWebService
+  ALBListenerForPublic:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - TargetGroupArn: !Ref ALBTargetForPublic
+        Type: forward
+      LoadBalancerArn: !Ref ALBForPublic
+      Port: 80
+      Protocol: HTTP
