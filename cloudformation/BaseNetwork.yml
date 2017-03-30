@@ -1,6 +1,11 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Cloud Formation for VPC/Subnet (BaseNetwork)
+Parameters:
+  CustomerIP:
+    Type: String
+    Default: 172.16.0.1/32
+    Description: 'Customer Site IP Address (Change this value if needed before loading stack)'
 Mappings:
   SubnetConfig:
     VPC:
@@ -33,9 +38,6 @@ Mappings:
       CIDR: 10.0.0.0/8
     SubnetCustomerPrivate2:
       CIDR: 192.168.0.0/16
-  IPs:
-    Customer:
-      IP: 210.250.140.41/32
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -285,7 +287,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref RouteTablePrivate
-      DestinationCidrBlock: !FindInMap [IPs, Customer, IP]
+      DestinationCidrBlock: !Ref CustomerIP
       GatewayId: !Ref InternetGateway
   RoutePublicForOfficeRouteTable1:
     DependsOn: AttachVirtualGatewayToCustomer
@@ -341,7 +343,7 @@ Resources:
       - IpProtocol: tcp
         FromPort: 22
         ToPort: 22
-        CidrIp: !FindInMap [IPs, Customer, IP]
+        CidrIp: !Ref CustomerIP
   SecurityGroupForRemoteDesktop:
     DependsOn: VPC
     Type: AWS::EC2::SecurityGroup
@@ -368,7 +370,7 @@ Resources:
       - IpProtocol: tcp
         FromPort: 3389
         ToPort: 3389
-        CidrIp: !FindInMap [IPs, Customer, IP]
+        CidrIp: !Ref CustomerIP
   SecurityGroupForLocalConnect:
     DependsOn: VPC
     Type: AWS::EC2::SecurityGroup
